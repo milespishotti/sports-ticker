@@ -7,7 +7,12 @@
 const char* ssid = "Eero";
 const char* password = "Pishotti";
 
-const char* nflUrl = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=20260515&limit=8";
+const char* mlbUrl = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard";
+
+void fetchGames(const char* url) {
+  
+}
+
 
 time_t parseDate(const char* dateStr) {
 
@@ -76,11 +81,20 @@ void setup() {
   }
 
   Serial.println("\nConnected!");
+  Serial.print("ArduinoJson Version: ");
+  Serial.println(ARDUINOJSON_VERSION);
   configTime(0, 0, "pool.ntp.org");
   
   setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
   tzset();
-  delay(2000);
+  Serial.print("Waiting for NTP sync");
+  time_t now = time(nullptr);
+  while (now < 1000000000) {
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+  }
+  Serial.print("\nNTP synced!");
 
 }
 
@@ -91,10 +105,10 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     http.useHTTP10(true);
-    http.begin(nflUrl);
+    http.begin(mlbUrl);
     http.setTimeout(20000);
 
-    Serial.print("Free heap: ");
+    Serial.print("\nFree heap: ");
     Serial.println(ESP.getFreeHeap());
 
     int httpCode = http.GET();
@@ -121,18 +135,23 @@ void loop() {
 
       JsonDocument filter;
 
-      // filter["events"][0]["name"] = true;
+      filter["events"][0]["name"] = true;
       filter["events"][0]["date"] = true;
 
       filter["events"][0]["competitions"][0]["competitors"][0]["homeAway"] = true;
       filter["events"][0]["competitions"][0]["competitors"][0]["score"] = true;
       filter["events"][0]["competitions"][0]["competitors"][0]["team"]["abbreviation"] = true;
+      filter["events"][0]["competitions"][0]["competitors"][1]["homeAway"] = true;
+      filter["events"][0]["competitions"][0]["competitors"][1]["score"] = true;
+      filter["events"][0]["competitions"][0]["competitors"][1]["team"]["abbreviation"] = true;
+      filter["events"][0]["competitions"][0]["status"]["period"] = true;
+      filter["events"][0]["competitions"][0]["status"]["type"]["state"] = true;
 
 
       JsonDocument doc;
       // deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
 
-      DeserializationError error = deserializeJson(doc, http.getStream());
+      DeserializationError error = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
 
       if (error) {
         Serial.print("JSON failed");
@@ -160,15 +179,15 @@ void loop() {
 
         Serial.println("-----");
 
-        Serial.print("Name: ");
-        Serial.println(event["name"].as<String>());
+        // Serial.print("Name: ");
+        // Serial.println(event["name"].as<String>());
 
-        Serial.print("Date: ");
-        Serial.println(event["date"].as<String>());
-
+        // Serial.print("Date: ");
+        // Serial.println(event["date"].as<String>());
 
         String name = event["name"];
         String dateStr = event["date"];
+
 
         const char* date = dateStr.c_str();
 
@@ -186,15 +205,19 @@ void loop() {
         
         String awayTeam = competition["competitors"][1]["team"]["abbreviation"];
         String awayScore = competition["competitors"][1]["score"];
+        
+        String state = competition["status"]["type"]["state"] | "pre";
+        int period = competition["status"]["period"] | 0;
 
-        if (nowTime < eventTime) {
+
+        if (state == "pre") {
           Serial.println(awayTeam + " @ " + homeTeam + " | " + readableTime);
+        } else if (state == "in") {
+          Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Inning " + period);
+        } else {
+          Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Final");
         }
 
-        else {
-          Serial.println(name + " | " + homeTeam + " " + homeScore + " - " + awayScore + " " + awayTeam);
-
-        }
 
         
         

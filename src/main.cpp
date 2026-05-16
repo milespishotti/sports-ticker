@@ -20,9 +20,27 @@ const char* password = "Pishotti";
 
 const char* mlbUrl = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard";
 
-void fetchGames(const char* url) {
-  
-}
+
+struct Game {
+  String awayTeam;
+  String homeTeam;
+  String awayScore;
+  String homeScore;
+  String state;
+  int period;
+  String displayTime;
+};
+
+const int MAX_GAMES = 20;
+Game games[MAX_GAMES];
+int gameCount = 0;
+int currentGame = 0;
+
+unsigned long lastFetch = 0;
+unsigned long lastSwitch = 0;
+const unsigned long FETCH_INTERVAL = 300000;
+const unsigned long DISPLAY_INTERVAL = 4000;
+
 
 
 time_t parseDate(const char* dateStr) {
@@ -79,6 +97,115 @@ String formatTime(time_t rawTime) {
 
 }
 
+String padTeam(String team) {
+if (team == "SF" || team == "SD" || team == "TB" || team == "KC") {
+  return team + " ";
+}
+return team;
+}
+
+
+void fetchGames(const char* url) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.useHTTP10(true);
+  http.begin(url);
+  http.setTimeout(20000);
+
+  Serial.print("\nFree heap: ");
+  Serial.println(ESP.getFreeHeap());
+
+  int httpCode = http.GET();
+  Serial.print("HTTP Code: ");
+  Serial.println(httpCode);
+
+  if (httpCode != 200) {
+    Serial.println("HTTP Request Failed");
+    http.end();
+    return;
+  }
+  JsonDocument filter;
+
+  filter["events"][0]["name"] = true;
+  filter["events"][0]["date"] = true;
+
+  filter["events"][0]["competitions"][0]["competitors"][0]["homeAway"] = true;
+  filter["events"][0]["competitions"][0]["competitors"][0]["score"] = true;
+  filter["events"][0]["competitions"][0]["competitors"][0]["team"]["abbreviation"] = true;
+  filter["events"][0]["competitions"][0]["competitors"][1]["homeAway"] = true;
+  filter["events"][0]["competitions"][0]["competitors"][1]["score"] = true;
+  filter["events"][0]["competitions"][0]["competitors"][1]["team"]["abbreviation"] = true;
+  filter["events"][0]["competitions"][0]["status"]["period"] = true;
+  filter["events"][0]["competitions"][0]["status"]["type"]["state"] = true;
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
+  http.end();
+
+  if (error) {
+    Serial.print("JSON failed: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  JsonArray events = doc["events"];
+  gameCount = 0;
+
+  for (JsonObject event : events) {
+    if (gameCount >= MAX_GAMES) break;
+
+    String dateStr = event["date"] | "";
+    time_t eventTime = parseDate(dateStr.c_str());
+
+    JsonObject competition = event["competitions"][0];
+
+    games[gameCount].homeTeam = padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???");
+    games[gameCount].homeScore = competition["competitors"][0]["score"] | "0";
+    games[gameCount].awayTeam = padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???");
+    games[gameCount].awayScore = competition["competitors"][1]["score"] | "0";
+    games[gameCount].state = competition["status"]["type"]["state"] | "pre";
+    games[gameCount].period = competition["status"]["period"];
+    games[gameCount].displayTime = formatTime(eventTime);
+
+    gameCount++;
+  
+
+  }
+
+  Serial.print("Games loaded: ");
+  Serial.println(gameCount);
+
+}
+
+void displayGame(int index) {
+  if (gameCount == 0) return ;
+  
+  Game g = games[index];
+  String line;
+
+  if (g.state == "pre") {
+    line = g.awayTeam + " @ " + g.homeTeam + " " + g.displayTime;
+  } else if (g.state == "in") {
+    line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " INN" + g.period;
+  } else {
+    line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " F";
+
+  }
+  
+  line = " " + line;
+
+  tft.fillScreen(ST7735_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+  tft.setCursor(0, 76);
+  tft.println(line);
+
+  Serial.println(line);
+
+}
+
+
 void setup() {
   Serial.begin(115200);
 
@@ -114,8 +241,12 @@ void setup() {
     now = time(nullptr);
   }
   Serial.print("\nNTP synced!");
-  tft.fillScreen(ST7735_BLACK);
+  
+  fetchGames(mlbUrl);
+  displayGame(currentGame);
 
+  lastFetch = millis();
+  lastSwitch = millis();
 
 }
 
@@ -123,170 +254,25 @@ void setup() {
 
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.useHTTP10(true);
-    http.begin(mlbUrl);
-    http.setTimeout(20000);
+  unsigned long now = millis();
 
-    Serial.print("\nFree heap: ");
-    Serial.println(ESP.getFreeHeap());
+  if (now - lastSwitch >= DISPLAY_INTERVAL) {
+    currentGame = (currentGame + 1) % gameCount;
+    displayGame(currentGame);
+    lastSwitch = now;
+  }
+  
+  if (now - lastFetch >= FETCH_INTERVAL) {
+    fetchGames(mlbUrl);
+    lastFetch = now;
+  }
 
-    int httpCode = http.GET();
-    Serial.print("HTTP Code: ");
-    Serial.println(httpCode);
-
-    Serial.print("HTTP reported size: ");
-    Serial.println(http.getSize());
-
-    tft.fillScreen(ST7735_BLACK);
-    
-
-    if (httpCode == 200) {
-
-      // String payload = http.getString();
-
-      // Serial.print("Payload length received: ");
-      // Serial.println(payload.length());
-
-      // Serial.println("First 200 chars: ");
-      // Serial.println(payload.substring(0, 200));
-
-      // Serial.println("Last 200 chars:");
-      // Serial.println(payload.substring(payload.length() -200));
-
-
-      JsonDocument filter;
-
-      filter["events"][0]["name"] = true;
-      filter["events"][0]["date"] = true;
-
-      filter["events"][0]["competitions"][0]["competitors"][0]["homeAway"] = true;
-      filter["events"][0]["competitions"][0]["competitors"][0]["score"] = true;
-      filter["events"][0]["competitions"][0]["competitors"][0]["team"]["abbreviation"] = true;
-      filter["events"][0]["competitions"][0]["competitors"][1]["homeAway"] = true;
-      filter["events"][0]["competitions"][0]["competitors"][1]["score"] = true;
-      filter["events"][0]["competitions"][0]["competitors"][1]["team"]["abbreviation"] = true;
-      filter["events"][0]["competitions"][0]["status"]["period"] = true;
-      filter["events"][0]["competitions"][0]["status"]["type"]["state"] = true;
-
-
-      JsonDocument doc;
-      // deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
-
-      DeserializationError error = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));
-
-      if (error) {
-        Serial.print("JSON failed");
-        Serial.println(error.c_str());
-        http.end();
-        return;
-
-        // Serial.print("HTTP request failed, code: ");
-        // Serial.println(httpCode);
-
-        // String errorBody = http.getString();
-        // Serial.println(errorBody);
-      }
-      Serial.println("JSON parsed successfully");
-      Serial.print("Events kept: ");
-      Serial.println(doc["events"].size());
-
-
-      JsonArray events = doc["events"];
-
-      Serial.println("Number of events: ");
-      Serial.println(events.size());
-
-      tft.setTextSize(1);
-      tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
-
-      int y = 10;
-
-
-      for (JsonObject event : events) {
-
-        Serial.println("-----");
-
-        // Serial.print("Name: ");
-        // Serial.println(event["name"].as<String>());
-
-        // Serial.print("Date: ");
-        // Serial.println(event["date"].as<String>());
-
-        String name = event["name"];
-        String dateStr = event["date"];
-
-
-        const char* date = dateStr.c_str();
-
-        time_t eventTime = parseDate(date);
-        time_t nowTime = time(nullptr);
-
-        String readableTime = formatTime(eventTime);
-
-
-        
-        JsonObject competition = event["competitions"][0];
-        
-        String homeTeam = competition["competitors"][0]["team"]["abbreviation"];
-        String homeScore = competition["competitors"][0]["score"];
-        
-        String awayTeam = competition["competitors"][1]["team"]["abbreviation"];
-        String awayScore = competition["competitors"][1]["score"];
-        
-        String state = competition["status"]["type"]["state"] | "pre";
-        int period = competition["status"]["period"] | 0;
-
-        if (homeTeam == "SF" || homeTeam == "SD" || homeTeam == "TB" || homeTeam == "KC") {
-          homeTeam = homeTeam + " ";
-        }
-
-        if (awayTeam == "SF" || awayTeam == "SD" || awayTeam == "TB" || awayTeam == "KC") {
-          awayTeam = awayTeam + " ";
-        }
-
-        String line;
-
-
-
-
-        if (state == "pre") {
-          // Serial.println(awayTeam + " @ " + homeTeam + " | " + readableTime);
-          line = awayTeam + " @ " + homeTeam + " | " + readableTime;
-        } else if (state == "in") {
-        //   Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Inning " + period);
-          line = awayTeam + " " + awayScore + "-" + homeScore + " " + homeTeam + " INN" + period;
-        } else {
-        //   Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Final");
-        line = awayTeam + " " + awayScore + "-" + homeScore + " " + homeTeam + " F";
-        }
-
-        line = "  " + line;
-
-        tft.setCursor(0, y);
-        tft.println(line);
-        y += 8; // each text size 1 line is 4 pixels tall
-
-        if (y > 160) break;
-
-
-        
-        
-
-      }
+}
       
       
 
       
      
 
-    } else {
-      Serial.println("HTTP request failed");
-    }
-    http.end();
-  }
-  delay(60000);
-}
 
 

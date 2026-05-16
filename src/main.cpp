@@ -3,6 +3,17 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
+
+
+#define TFT_CS  5
+#define TFT_DC  2
+#define TFT_RST 4
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+
 
 const char* ssid = "Eero";
 const char* password = "Pishotti";
@@ -70,6 +81,14 @@ String formatTime(time_t rawTime) {
 
 void setup() {
   Serial.begin(115200);
+
+  tft.initR(INITR_BLACKTAB);
+  tft.fillScreen(ST77XX_BLACK);
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(0,0);
+  tft.println("Connecting...");
+
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");

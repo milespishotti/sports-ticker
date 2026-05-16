@@ -114,6 +114,8 @@ void setup() {
     now = time(nullptr);
   }
   Serial.print("\nNTP synced!");
+  tft.fillScreen(ST7735_BLACK);
+
 
 }
 
@@ -136,6 +138,8 @@ void loop() {
 
     Serial.print("HTTP reported size: ");
     Serial.println(http.getSize());
+
+    tft.fillScreen(ST7735_BLACK);
     
 
     if (httpCode == 200) {
@@ -194,6 +198,12 @@ void loop() {
       Serial.println("Number of events: ");
       Serial.println(events.size());
 
+      tft.setTextSize(1);
+      tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+
+      int y = 10;
+
+
       for (JsonObject event : events) {
 
         Serial.println("-----");
@@ -228,14 +238,37 @@ void loop() {
         String state = competition["status"]["type"]["state"] | "pre";
         int period = competition["status"]["period"] | 0;
 
+        if (homeTeam == "SF" || homeTeam == "SD" || homeTeam == "TB" || homeTeam == "KC") {
+          homeTeam = homeTeam + " ";
+        }
+
+        if (awayTeam == "SF" || awayTeam == "SD" || awayTeam == "TB" || awayTeam == "KC") {
+          awayTeam = awayTeam + " ";
+        }
+
+        String line;
+
+
+
 
         if (state == "pre") {
-          Serial.println(awayTeam + " @ " + homeTeam + " | " + readableTime);
+          // Serial.println(awayTeam + " @ " + homeTeam + " | " + readableTime);
+          line = awayTeam + " @ " + homeTeam + " | " + readableTime;
         } else if (state == "in") {
-          Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Inning " + period);
+        //   Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Inning " + period);
+          line = awayTeam + " " + awayScore + "-" + homeScore + " " + homeTeam + " INN" + period;
         } else {
-          Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Final");
+        //   Serial.println(awayTeam + " " + awayScore + " @ " + homeScore + " " + homeTeam + " | " + "Final");
+        line = awayTeam + " " + awayScore + "-" + homeScore + " " + homeTeam + " F";
         }
+
+        line = "  " + line;
+
+        tft.setCursor(0, y);
+        tft.println(line);
+        y += 8; // each text size 1 line is 4 pixels tall
+
+        if (y > 160) break;
 
 
         

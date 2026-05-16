@@ -80,6 +80,7 @@ void setup() {
   
   setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
   tzset();
+  delay(2000);
 
 }
 
@@ -91,6 +92,10 @@ void loop() {
     HTTPClient http;
     http.useHTTP10(true);
     http.begin(nflUrl);
+    http.setTimeout(20000);
+
+    Serial.print("Free heap: ");
+    Serial.println(ESP.getFreeHeap());
 
     int httpCode = http.GET();
     Serial.print("HTTP Code: ");
@@ -132,6 +137,7 @@ void loop() {
       if (error) {
         Serial.print("JSON failed");
         Serial.println(error.c_str());
+        http.end();
         return;
 
         // Serial.print("HTTP request failed, code: ");
@@ -205,7 +211,7 @@ void loop() {
     }
     http.end();
   }
-  delay(3000);
+  delay(60000);
 }
 
 

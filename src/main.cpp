@@ -4,19 +4,34 @@
 #include <ArduinoJson.h>
 #include <time.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_ST7735.h>
-#include <SPI.h>
+#include <PxMatrix.h>
 
+#define P_LAT 22
+#define P_A 19
+#define P_B 23
+#define P_C 18
+#define P_D 5
+#define P_E 15
+#define P_OE 16
 
-#define TFT_CS  5
-#define TFT_DC  2
-#define TFT_RST 4
+// Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+PxMATRIX display(64, 32, P_LAT, P_OE, P_A, P_B, P_C, P_D, P_E);
 
 
 const char* ssid = "Eero";
 const char* password = "Pishotti";
+
+
+hw_timer_t *timer = NULL;
+portMUX_TYPE timerMUX = portMUX_INITIALIZER_UNLOCKED;
+
+
+void IRAM_ATTR display_updater() {
+  portENTER_CRITICAL_ISR(&timerMUX);
+  display.display(70);
+  portEXIT_CRITICAL_ISR(&timerMUX);
+}
 
 const char* mlbUrl = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard";
 
@@ -179,43 +194,97 @@ void fetchGames(const char* url) {
 }
 
 void displayGame(int index) {
-  if (gameCount == 0) return ;
+  // ST7735 LED Screen Function
+  // if (gameCount == 0) return ;
   
+  // Game g = games[index];
+  // String line;
+
+  // if (g.state == "pre") {
+  //   line = g.awayTeam + " @ " + g.homeTeam + " " + g.displayTime;
+  // } else if (g.state == "in") {
+  //   line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " INN" + g.period;
+  // } else {
+  //   line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " F";
+
+  // }
+  
+  // line = " " + line;
+
+  // tft.fillScreen(ST7735_BLACK);
+  // tft.setTextSize(1);
+  // tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+  // tft.setCursor(0, 76);
+  // tft.println(line);
+
+  // Serial.println(line);
+
+
+  // HUB75 Led Panels Function
+  if (gameCount == 0) return;
+
   Game g = games[index];
-  String line;
+
+  display.clearDisplay();
+  display.setTextWrap(false);
+  display.setTextSize(1);
+
 
   if (g.state == "pre") {
-    line = g.awayTeam + " @ " + g.homeTeam + " " + g.displayTime;
+    display.setTextColor(display.color565(255, 255, 255));
+    display.setCursor(0, 0);
+    display.print(g.awayTeam + " @ " + g.homeTeam);
+    display.setTextColor(display.color565(150, 150, 150));
+    display.setCursor(0, 12);
+    display.print(g.displayTime);
+
   } else if (g.state == "in") {
-    line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " INN" + g.period;
+    display.setTextColor(display.color565(0, 255, 0));
+    display.setCursor(0,0);
+    display.print(g.awayTeam + " " + g.awayScore);
+    display.setCursor(0, 12);
+    display.print(g.homeTeam + " " + g.homeScore);
+    display.setCursor(0, 24);
+    display.setTextColor(display.color565(255, 165, 0));
+    display.print("INN " + String(g.period));
+
   } else {
-    line = g.awayTeam + " " + g.awayScore + "-" + g.homeScore + " " + g.homeTeam + " F";
+    display.setTextColor(display.color565(200, 200, 200));
+    display.setCursor(0, 0);
+    display.print(g.awayTeam + " " + g.awayScore);
+    display.setCursor(0, 12);
+    display.print(g.homeTeam + " " + g.homeScore);
+    display.setCursor(0, 24);
+    display.setTextColor(display.color565(100, 100, 100));
+    display.print("FINAL");
 
   }
-  
-  line = " " + line;
-
-  tft.fillScreen(ST7735_BLACK);
-  tft.setTextSize(1);
-  tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
-  tft.setCursor(0, 76);
-  tft.println(line);
-
-  Serial.println(line);
 
 }
 
 
 void setup() {
   Serial.begin(115200);
+  // ST7735 Init
+  // tft.initR(INITR_BLACKTAB);
+  // tft.fillScreen(ST77XX_BLACK);
+  // tft.setTextColor(ST77XX_WHITE);
+  // tft.setTextSize(1);
+  // tft.setCursor(0,0);
+  // tft.println("Connecting...");
 
-  tft.initR(INITR_BLACKTAB);
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setTextSize(1);
-  tft.setCursor(0,0);
-  tft.println("Connecting...");
+  // HUB75 LED Init
 
+  display.begin(16);
+  display.flushDisplay();
+  display.setBrightness(50);
+
+  timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(timer, &display_updater, true);
+  timerAlarmWrite(timer, 2000, true);
+  timerAlarmEnable(timer);
+
+  display.clearDisplay();
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");

@@ -14,6 +14,10 @@
 #define P_E 15
 #define P_OE 16
 
+#define BUTTON_PIN 0
+unsigned long lastButtonPress = 0;
+const unsigned long DEBOUNCE_DELAY = 300;
+
 // Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 PxMATRIX display(64, 32, P_LAT, P_OE, P_A, P_B, P_C, P_D, P_E);
@@ -83,7 +87,6 @@ unsigned long lastFetch = 0;
 unsigned long lastSwitch = 0;
 const unsigned long FETCH_INTERVAL = 300000;
 const unsigned long DISPLAY_INTERVAL = 4000;
-
 
 
 time_t parseDate(const char* dateStr) {
@@ -301,6 +304,22 @@ void advanceSport() {
   } while (gameCount ==  0 && attempts < NUM_SPORTS);
 }
 
+void handleButton() {
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    unsigned long now = millis();
+    if (now - lastButtonPress > DEBOUNCE_DELAY) {
+      currentMode = (Mode)((currentMode + 1) % (NCAAB_ONLY + 1));
+      currentGame = 0;
+      currentSport = currentMode == ALL_SPORTS ? 0 : currentMode - 1;
+      fetchGames(sportsUrls[currentSport]);
+      displayGame(currentGame);
+      lastButtonPress = now;
+      Serial.print("Mode changed to: ");
+      Serial.println(currentMode);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   // ST7735 Init
@@ -354,6 +373,7 @@ void setup() {
 
   lastFetch = millis();
   lastSwitch = millis();
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
 }
 
@@ -362,6 +382,7 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
+  handleButton();
 
   if (now - lastSwitch >= DISPLAY_INTERVAL) {
     currentGame++;

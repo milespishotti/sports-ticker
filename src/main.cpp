@@ -33,7 +33,35 @@ void IRAM_ATTR display_updater() {
   portEXIT_CRITICAL_ISR(&timerMUX);
 }
 
-const char* mlbUrl = "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard";
+
+const char* sportsUrls[] = {
+  "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/ice-hockey/nhl/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard"
+};
+
+const char* sportNames[] {
+  "MLB", "NFL", "NBA", "NHL", "NCAAF", "NCAAB"
+};
+
+const int NUM_SPORTS = 6;
+int currentSport = 0;
+
+enum Mode {
+  ALL_SPORTS,
+  MLB_ONLY,
+  NFL_ONLY,
+  NBA_ONLY,
+  NHL_ONLY,
+  NCAAF_ONLY,
+  NCAAB_ONLY,
+
+};
+
+Mode currentMode = ALL_SPORTS;
 
 
 struct Game {
@@ -263,6 +291,16 @@ void displayGame(int index) {
 }
 
 
+
+void advanceSport() {
+  int attempts = 0;
+  do {
+    currentSport = (currentSport + 1) % NUM_SPORTS;
+    fetchGames(sportsUrls[currentSport]);
+    attempts++;
+  } while (gameCount ==  0 && attempts < NUM_SPORTS);
+}
+
 void setup() {
   Serial.begin(115200);
   // ST7735 Init
@@ -310,8 +348,8 @@ void setup() {
     now = time(nullptr);
   }
   Serial.print("\nNTP synced!");
-  
-  fetchGames(mlbUrl);
+
+  fetchGames(sportsUrls[currentSport]);
   displayGame(currentGame);
 
   lastFetch = millis();
@@ -326,13 +364,24 @@ void loop() {
   unsigned long now = millis();
 
   if (now - lastSwitch >= DISPLAY_INTERVAL) {
-    currentGame = (currentGame + 1) % gameCount;
+    currentGame++;
+
+    if (currentGame >= gameCount) {
+      currentGame = 0;
+
+      if (currentMode == ALL_SPORTS) {
+        advanceSport();
+      } else {
+        fetchGames(sportsUrls[currentMode - 1]);
+      }
+    }
+  
     displayGame(currentGame);
     lastSwitch = now;
   }
-  
+
   if (now - lastFetch >= FETCH_INTERVAL) {
-    fetchGames(mlbUrl);
+    fetchGames(sportsUrls[currentSport]);
     lastFetch = now;
   }
 

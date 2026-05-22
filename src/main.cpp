@@ -204,6 +204,17 @@ void fetchGames(const char* url) {
     String dateStr = event["date"] | "";
     time_t eventTime = parseDate(dateStr.c_str());
 
+    time_t nowTime = time(nullptr);
+    struct tm* eventTm = localtime(&eventTime);
+    struct tm eventTmCopy = *eventTm;
+    struct tm* nowTm = localtime(&nowTime);
+
+    if (eventTmCopy.tm_mday != nowTm ->tm_mday ||
+      eventTmCopy.tm_mon != nowTm->tm_mon) {
+        continue;
+      }
+
+
     JsonObject competition = event["competitions"][0];
 
     games[gameCount].homeTeam = padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???");
@@ -332,14 +343,9 @@ void setup() {
 
   // HUB75 LED Init
 
-  display.begin(16);
-  display.flushDisplay();
-  display.setBrightness(50);
+  
 
-  timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(timer, &display_updater, true);
-  timerAlarmWrite(timer, 2000, true);
-  timerAlarmEnable(timer);
+ 
 
   display.clearDisplay();
 
@@ -351,6 +357,18 @@ void setup() {
     Serial.print(".");
 
   }
+
+  display.begin(16);
+  display.fillScreen(display.color565(255, 0, 0));
+  display.flushDisplay();
+  display.setBrightness(50);
+
+  timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(timer, &display_updater, true);
+  timerAlarmWrite(timer, 2000, true);
+  timerAlarmEnable(timer);
+  
+  display.clearDisplay();
 
   Serial.println("\nConnected!");
   Serial.print("ArduinoJson Version: ");
@@ -405,6 +423,8 @@ void loop() {
     fetchGames(sportsUrls[currentSport]);
     lastFetch = now;
   }
+  // Serial.println("loop running");
+  // delay(1000);
 
 }
       

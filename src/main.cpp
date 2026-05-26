@@ -5,14 +5,19 @@
 #include <time.h>
 #include <Adafruit_GFX.h>
 #include <PxMatrix.h>
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 
-#define P_LAT 22
-#define P_A 19
-#define P_B 23
-#define P_C 18
-#define P_D 5
-#define P_E 15
-#define P_OE 16
+// #define P_LAT 22
+// #define P_A 19
+// #define P_B 23
+// #define P_C 18
+// #define P_D 5
+// #define P_E 15
+// #define P_OE 16
+
+#define PANEL_WODTH 64
+#define PANEL_HEIGHT 32
+#define PANEL_COUNT 1
 
 #define BUTTON_PIN 0
 unsigned long lastButtonPress = 0;
@@ -20,22 +25,23 @@ const unsigned long DEBOUNCE_DELAY = 300;
 
 // Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
-PxMATRIX display(64, 32, P_LAT, P_OE, P_A, P_B, P_C, P_D, P_E);
+// PxMATRIX display(64, 32, P_LAT, P_OE, P_A, P_B, P_C, P_D, P_E);
 
+MatrixPanel_I2S_DMA *matrix = nullptr;
 
 const char* ssid = "Eero";
 const char* password = "Pishotti";
 
 
-hw_timer_t *timer = NULL;
-portMUX_TYPE timerMUX = portMUX_INITIALIZER_UNLOCKED;
+// hw_timer_t *timer = NULL;
+// portMUX_TYPE timerMUX = portMUX_INITIALIZER_UNLOCKED;
 
 
-void IRAM_ATTR display_updater() {
-  portENTER_CRITICAL_ISR(&timerMUX);
-  display.display(70);
-  portEXIT_CRITICAL_ISR(&timerMUX);
-}
+// void IRAM_ATTR display_updater() {
+//   portENTER_CRITICAL_ISR(&timerMUX);
+//   display.display(70);
+//   portEXIT_CRITICAL_ISR(&timerMUX);
+// }
 
 
 const char* sportsUrls[] = {
@@ -267,38 +273,67 @@ void displayGame(int index) {
 
   Game g = games[index];
 
-  display.clearDisplay();
-  display.setTextWrap(false);
-  display.setTextSize(1);
+  // display.clearDisplay();
+  // display.setTextWrap(false);
+  // display.setTextSize(1);
+
+  matrix->clearScreen();
+  matrix->setTextWrap(false);
+  matrix->setTextSize(1);
 
 
   if (g.state == "pre") {
-    display.setTextColor(display.color565(255, 255, 255));
-    display.setCursor(0, 0);
-    display.print(g.awayTeam + " @ " + g.homeTeam);
-    display.setTextColor(display.color565(150, 150, 150));
-    display.setCursor(0, 12);
-    display.print(g.displayTime);
+    // display.setTextColor(display.color565(255, 255, 255));
+    // display.setCursor(0, 0);
+    // display.print(g.awayTeam + " @ " + g.homeTeam);
+    // display.setTextColor(display.color565(150, 150, 150));
+    // display.setCursor(0, 12);
+    // display.print(g.displayTime);
+
+    matrix->setTextColor(matrix->color565(255, 255, 255));
+    matrix->setCursor(0,0);
+    matrix->print(g.awayTeam + " @  " + g.homeTeam);
+    matrix->setTextColor(matrix->color565(150, 150, 150));
+    matrix->setCursor(0, 12);
+    matrix->print(g.displayTime);
 
   } else if (g.state == "in") {
-    display.setTextColor(display.color565(0, 255, 0));
-    display.setCursor(0,0);
-    display.print(g.awayTeam + " " + g.awayScore);
-    display.setCursor(0, 12);
-    display.print(g.homeTeam + " " + g.homeScore);
-    display.setCursor(0, 24);
-    display.setTextColor(display.color565(255, 165, 0));
-    display.print("INN " + String(g.period));
+    // display.setTextColor(display.color565(0, 255, 0));
+    // display.setCursor(0,0);
+    // display.print(g.awayTeam + " " + g.awayScore);
+    // display.setCursor(0, 12);
+    // display.print(g.homeTeam + " " + g.homeScore);
+    // display.setCursor(0, 24);
+    // display.setTextColor(display.color565(255, 165, 0));
+    // display.print("INN " + String(g.period));
+
+    matrix->setTextColor(matrix->color565(0, 255, 0));
+    matrix->setCursor(0,0);
+    matrix->print(g.awayTeam + " " + g.awayScore);
+    matrix->setCursor(0,12);
+    matrix->print(g.homeTeam + " " + g.homeScore);
+    matrix->setCursor(0,24);
+    matrix->setTextColor(matrix->color565(255, 255, 0));
+    matrix->print("INN " + String(g.period));
 
   } else {
-    display.setTextColor(display.color565(200, 200, 200));
-    display.setCursor(0, 0);
-    display.print(g.awayTeam + " " + g.awayScore);
-    display.setCursor(0, 12);
-    display.print(g.homeTeam + " " + g.homeScore);
-    display.setCursor(0, 24);
-    display.setTextColor(display.color565(100, 100, 100));
-    display.print("FINAL");
+    // display.setTextColor(display.color565(200, 200, 200));
+    // display.setCursor(0, 0);
+    // display.print(g.awayTeam + " " + g.awayScore);
+    // display.setCursor(0, 12);
+    // display.print(g.homeTeam + " " + g.homeScore);
+    // display.setCursor(0, 24);
+    // display.setTextColor(display.color565(100, 100, 100));
+    // display.print("FINAL");
+
+    matrix->setTextColor(matrix->color565(200, 200, 200));
+    matrix->setCursor(0,0);
+    matrix->print(g.awayTeam + " " + g.awayScore);
+    matrix->setCursor(0,12);
+    matrix->print(g.homeTeam + " "  + g.homeScore);
+    matrix->setCursor(0,24);
+    matrix->setTextColor(matrix->color565(100, 100, 100));
+    matrix->print("FINAL");
 
   }
 
@@ -347,7 +382,7 @@ void setup() {
 
  
 
-  display.clearDisplay();
+  // display.clearDisplay();
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
@@ -358,19 +393,38 @@ void setup() {
 
   }
 
-  display.begin(16);
-  display.fillScreen(display.color565(255, 0, 0));
-  display.flushDisplay();
-  display.setBrightness(50);
+  // display.begin(16);
+  // display.setPanelsWidth(1);
+  // display.fillScreen(display.color565(255, 0, 0));
+  // display.flushDisplay();
+  // display.setBrightness(50);
 
-  timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(timer, &display_updater, true);
-  timerAlarmWrite(timer, 2000, true);
-  timerAlarmEnable(timer);
+  // timer = timerBegin(0, 80, true);
+  // timerAttachInterrupt(timer, &display_updater, true);
+  // timerAlarmWrite(timer, 2000, true);
+  // timerAlarmEnable(timer);
   
-  display.clearDisplay();
+  // display.clearDisplay();
+  // display.fillScreen(display.color565(0, 0,0));
 
   Serial.println("\nConnected!");
+
+  HUB75_I2S_CFG mxconfig;
+  mxconfig.mx_height = PANEL_HEIGHT;
+  mxconfig.chain_length = PANEL_COUNT;
+  mxconfig.gpio.e = 32;
+  mxconfig.driver = HUB75_I2S_CFG::FM6126A;
+  mxconfig.clkphase = false;
+
+  matrix = new MatrixPanel_I2S_DMA(mxconfig);
+  matrix->setBrightness8(128);
+  if (!matrix->begin()) {
+    Serial.println("Matrix init failed");
+  }
+  matrix->clearScreen();
+  matrix->setTextWrap(false);
+
+
   Serial.print("ArduinoJson Version: ");
   Serial.println(ARDUINOJSON_VERSION);
   configTime(0, 0, "pool.ntp.org");

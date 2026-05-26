@@ -17,7 +17,7 @@
 
 #define PANEL_WODTH 64
 #define PANEL_HEIGHT 32
-#define PANEL_COUNT 1
+#define PANEL_COUNT 3
 
 #define BUTTON_PIN 0
 unsigned long lastButtonPress = 0;
@@ -145,7 +145,7 @@ String formatTime(time_t rawTime) {
 
   }
 
-  return String(hour) + ":" + minuteText + " " + ampm;
+  return String(hour) + ":" + minuteText; //+ " " + ampm;
 
 }
 
@@ -279,7 +279,7 @@ void displayGame(int index) {
 
   matrix->clearScreen();
   matrix->setTextWrap(false);
-  matrix->setTextSize(1);
+  matrix->setTextSize(2);
 
 
   if (g.state == "pre") {
@@ -291,11 +291,16 @@ void displayGame(int index) {
     // display.print(g.displayTime);
 
     matrix->setTextColor(matrix->color565(255, 255, 255));
-    matrix->setCursor(0,0);
-    matrix->print(g.awayTeam + " @  " + g.homeTeam);
+    matrix->setCursor(0,8);
+    matrix->print(g.awayTeam + " @ ");
+    
+    matrix->setCursor(64,8);
+    matrix->print(g.homeTeam + " |");
+  
     matrix->setTextColor(matrix->color565(150, 150, 150));
-    matrix->setCursor(0, 12);
+    matrix->setCursor(128, 8);
     matrix->print(g.displayTime);
+  
 
   } else if (g.state == "in") {
     // display.setTextColor(display.color565(0, 255, 0));
@@ -308,12 +313,14 @@ void displayGame(int index) {
     // display.print("INN " + String(g.period));
 
     matrix->setTextColor(matrix->color565(0, 255, 0));
-    matrix->setCursor(0,0);
+    matrix->setCursor(0, 8);
     matrix->print(g.awayTeam + " " + g.awayScore);
-    matrix->setCursor(0,12);
-    matrix->print(g.homeTeam + " " + g.homeScore);
-    matrix->setCursor(0,24);
-    matrix->setTextColor(matrix->color565(255, 255, 0));
+
+    matrix->setCursor(64, 8);
+    matrix->print(g.homeScore + " " + g.homeTeam);
+
+    matrix->setTextColor(matrix->color565(255, 165, 0));
+    matrix->setCursor(128, 8);
     matrix->print("INN " + String(g.period));
 
   } else {
@@ -327,14 +334,15 @@ void displayGame(int index) {
     // display.print("FINAL");
 
     matrix->setTextColor(matrix->color565(200, 200, 200));
-    matrix->setCursor(0,0);
+    matrix->setCursor(0, 8);
     matrix->print(g.awayTeam + " " + g.awayScore);
-    matrix->setCursor(0,12);
-    matrix->print(g.homeTeam + " "  + g.homeScore);
-    matrix->setCursor(0,24);
-    matrix->setTextColor(matrix->color565(100, 100, 100));
-    matrix->print("FINAL");
 
+    matrix->setCursor(64, 8);
+    matrix->print(g.homeScore + " " + g.homeTeam);
+
+    matrix->setTextColor(matrix->color565(100, 100, 100));
+    matrix->setCursor(128, 8);
+    matrix->print("FINAL");
   }
 
 }

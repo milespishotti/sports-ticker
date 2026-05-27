@@ -48,7 +48,7 @@ const char* sportsUrls[] = {
   "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
-  "http://site.api.espn.com/apis/site/v2/sports/ice-hockey/nhl/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard"
 };
@@ -75,13 +75,14 @@ Mode currentMode = ALL_SPORTS;
 
 
 struct Game {
-  String awayTeam;
-  String homeTeam;
-  String awayScore;
-  String homeScore;
-  String state;
+  char awayTeam[5];
+  char homeTeam[5];
+  char awayScore[4];
+  char homeScore[4];
+  char state[4];
+  char sport[7];
   int period;
-  String displayTime;
+  char displayTime[9];
 };
 
 const int MAX_GAMES = 20;
@@ -157,13 +158,25 @@ return team;
 }
 
 
-void fetchGames(const char* url) {
+void fetchGames(const char* url, const char* sport) {
   if (WiFi.status() != WL_CONNECTED) return;
+
+  for (int i = 0; i < MAX_GAMES; i++) {
+    games[i].awayTeam[0] = '\0';
+    games[i].homeTeam[0] = '\0';
+    games[i].awayScore[0] = '\0';
+    games[i].homeScore[0] = '\0';
+    games[i].state[0] = '\0';
+    games[i].displayTime[0] = '\0';
+    games[i].sport[0] = '\0';
+  }
+  gameCount = 0;
 
   HTTPClient http;
   http.useHTTP10(true);
   http.begin(url);
-  http.setTimeout(20000);
+  http.setTimeout(30000);
+  http.setConnectTimeout(10000);
 
   Serial.print("\nFree heap: ");
   Serial.println(ESP.getFreeHeap());
@@ -207,8 +220,9 @@ void fetchGames(const char* url) {
   for (JsonObject event : events) {
     if (gameCount >= MAX_GAMES) break;
 
-    String dateStr = event["date"] | "";
-    time_t eventTime = parseDate(dateStr.c_str());
+    char dateStr[25];
+    strlcpy(dateStr, event["date"] | "", 25);
+    time_t eventTime = parseDate(dateStr);
 
     time_t nowTime = time(nullptr);
     struct tm* eventTm = localtime(&eventTime);
@@ -223,13 +237,14 @@ void fetchGames(const char* url) {
 
     JsonObject competition = event["competitions"][0];
 
-    games[gameCount].homeTeam = padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???");
-    games[gameCount].homeScore = competition["competitors"][0]["score"] | "0";
-    games[gameCount].awayTeam = padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???");
-    games[gameCount].awayScore = competition["competitors"][1]["score"] | "0";
-    games[gameCount].state = competition["status"]["type"]["state"] | "pre";
-    games[gameCount].period = competition["status"]["period"];
-    games[gameCount].displayTime = formatTime(eventTime);
+    strlcpy(games[gameCount].homeTeam, padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???").c_str(), 5);
+    strlcpy(games[gameCount].homeScore, (competition["competitors"][0]["score"] | "0"), 4);
+    strlcpy(games[gameCount].awayTeam,  padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???").c_str(), 5);
+    strlcpy(games[gameCount].awayScore, (competition["competitors"][1]["score"] | "0"), 4);
+    strlcpy(games[gameCount].state, (competition["status"]["type"]["state"] | "pre"), 4);
+    games[gameCount].period = competition["status"]["period"] | 0;
+    strlcpy(games[gameCount].displayTime, formatTime(eventTime).c_str(), 9);
+    strlcpy(games[gameCount].sport, sport, 7);
 
     gameCount++;
   
@@ -282,7 +297,7 @@ void displayGame(int index) {
   matrix->setTextSize(2);
 
 
-  if (g.state == "pre") {
+  if (strcmp(g.state, "pre") == 0) {
     // display.setTextColor(display.color565(255, 255, 255));
     // display.setCursor(0, 0);
     // display.print(g.awayTeam + " @ " + g.homeTeam);
@@ -292,17 +307,20 @@ void displayGame(int index) {
 
     matrix->setTextColor(matrix->color565(255, 255, 255));
     matrix->setCursor(0,8);
-    matrix->print(g.awayTeam + " @ ");
+    matrix->print(g.awayTeam);
+    matrix->setCursor(44, 8);
+    matrix->print("@");
     
     matrix->setCursor(64,8);
-    matrix->print(g.homeTeam + " |");
+    matrix->print(g.homeTeam);
+    matrix->print(" |");
   
     matrix->setTextColor(matrix->color565(150, 150, 150));
     matrix->setCursor(128, 8);
     matrix->print(g.displayTime);
   
 
-  } else if (g.state == "in") {
+  } else if (strcmp(g.state, "in") == 0) {
     // display.setTextColor(display.color565(0, 255, 0));
     // display.setCursor(0,0);
     // display.print(g.awayTeam + " " + g.awayScore);
@@ -314,14 +332,34 @@ void displayGame(int index) {
 
     matrix->setTextColor(matrix->color565(0, 255, 0));
     matrix->setCursor(0, 8);
-    matrix->print(g.awayTeam + " " + g.awayScore);
+    matrix->print(g.awayTeam);
+    matrix->setCursor(40, 8);
+    matrix->print(g.awayScore);
+    matrix->setCursor(66,8);
+    matrix->print("-");
 
-    matrix->setCursor(64, 8);
-    matrix->print(g.homeScore + " " + g.homeTeam);
+    matrix->setCursor(76, 8);
+    matrix->print(g.homeScore);
+    matrix->setCursor(114, 8);
+    matrix->print(g.homeTeam);
 
     matrix->setTextColor(matrix->color565(255, 165, 0));
-    matrix->setCursor(128, 8);
-    matrix->print("INN " + String(g.period));
+    matrix->setCursor(158, 8);
+    
+    if (strcmp(g.sport, "MLB") == 0) {
+      matrix->print("I:");
+    } else if (strcmp(g.sport, "NHL") == 0) {
+      matrix->print("P:");
+    } else if (strcmp(g.sport, "NCAAB") == 0) {
+      matrix->print("H:");
+    } else if (strcmp(g.sport, "NCAAF") == 0) {
+      matrix->print("H:");
+    } else {
+      matrix->print("Q:");
+    }
+    
+    matrix->print(g.period);
+
 
   } else {
     // display.setTextColor(display.color565(200, 200, 200));
@@ -335,14 +373,20 @@ void displayGame(int index) {
 
     matrix->setTextColor(matrix->color565(200, 200, 200));
     matrix->setCursor(0, 8);
-    matrix->print(g.awayTeam + " " + g.awayScore);
+    matrix->print(g.awayTeam);
+    matrix->setCursor(40, 8);
+    matrix->print(g.awayScore);
+    matrix->setCursor(52, 8);
+    matrix->print("-");
 
     matrix->setCursor(64, 8);
-    matrix->print(g.homeScore + " " + g.homeTeam);
+    matrix->print(g.homeScore);
+    matrix->setCursor(100, 8);
+    matrix->print(g.homeTeam);
 
     matrix->setTextColor(matrix->color565(100, 100, 100));
-    matrix->setCursor(128, 8);
-    matrix->print("FINAL");
+    matrix->setCursor(158, 8);
+    matrix->print("FNL");
   }
 
 }
@@ -353,7 +397,7 @@ void advanceSport() {
   int attempts = 0;
   do {
     currentSport = (currentSport + 1) % NUM_SPORTS;
-    fetchGames(sportsUrls[currentSport]);
+    fetchGames(sportsUrls[currentSport], sportNames[currentSport]);
     attempts++;
   } while (gameCount ==  0 && attempts < NUM_SPORTS);
 }
@@ -365,7 +409,7 @@ void handleButton() {
       currentMode = (Mode)((currentMode + 1) % (NCAAB_ONLY + 1));
       currentGame = 0;
       currentSport = currentMode == ALL_SPORTS ? 0 : currentMode - 1;
-      fetchGames(sportsUrls[currentSport]);
+      fetchGames(sportsUrls[currentSport], sportNames[currentSport]);
       displayGame(currentGame);
       lastButtonPress = now;
       Serial.print("Mode changed to: ");
@@ -435,7 +479,7 @@ void setup() {
 
   Serial.print("ArduinoJson Version: ");
   Serial.println(ARDUINOJSON_VERSION);
-  configTime(0, 0, "pool.ntp.org");
+  configTime(0, 0,  "pool.ntp.org");
   
   setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
   tzset();
@@ -448,7 +492,7 @@ void setup() {
   }
   Serial.print("\nNTP synced!");
 
-  fetchGames(sportsUrls[currentSport]);
+  fetchGames(sportsUrls[currentSport], sportNames[currentSport]);
   displayGame(currentGame);
 
   lastFetch = millis();
@@ -461,6 +505,11 @@ void setup() {
 
 
 void loop() {
+
+  if (ESP.getFreeHeap() < 50000) {
+    Serial.println("Low memory, restarting...");
+    ESP.restart();
+  }
   unsigned long now = millis();
   handleButton();
 
@@ -473,7 +522,7 @@ void loop() {
       if (currentMode == ALL_SPORTS) {
         advanceSport();
       } else {
-        fetchGames(sportsUrls[currentMode - 1]);
+        fetchGames(sportsUrls[currentMode - 1], sportNames[currentMode - 1]);
       }
     }
   
@@ -482,7 +531,7 @@ void loop() {
   }
 
   if (now - lastFetch >= FETCH_INTERVAL) {
-    fetchGames(sportsUrls[currentSport]);
+    fetchGames(sportsUrls[currentSport], sportNames[currentSport]);
     lastFetch = now;
   }
   // Serial.println("loop running");

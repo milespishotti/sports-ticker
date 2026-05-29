@@ -47,7 +47,7 @@ const char* password = "Pishotti";
 const char* sportsUrls[] = {
   "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
-  "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+  "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20250201",
   "http://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard"
@@ -114,48 +114,55 @@ time_t parseDate(const char* dateStr) {
 
 }
 
-String formatTime(time_t rawTime) {
+void formatTime(time_t rawTime, char* buf, size_t bufSize) {
   struct tm* timeInfo = localtime(&rawTime);
-
-  int hour = timeInfo -> tm_hour;
-  int minute = timeInfo -> tm_min;
-
-  String ampm = "AM";
-
-  if (hour >= 12) {
-    ampm = "PM";
-  }
-
-  if (hour == 0) {
-    hour = 12;
-  }
-
-  else if (hour > 12) {
-    hour = hour - 12;
-
-  }
-
-  String minuteText;
-
-  if (minute < 10) {
-    minuteText = "0" + String(minute);
-  }
-
-  else {
-    minuteText = String(minute);
-
-  }
-
-  return String(hour) + ":" + minuteText; //+ " " + ampm;
-
+  int hour = timeInfo->tm_hour;
+  int minute = timeInfo->tm_min;
+  if (hour == 0) hour = 12;
+  else if (hour > 12) hour = hour -12;
+  snprintf(buf, bufSize, "%d:%02d", hour, minute);
 }
+
+
+
 
 String padTeam(String team) {
 if (team == "SF" || team == "SD" || team == "TB" || team == "KC") {
   return team + " ";
-}
+} else if (team == "UTAH") {
+  return "UTA";
+} else {
 return team;
+} }
+
+String padScoreAway(const char* score) {
+  int numScore = atoi(score);
+
+  if (numScore < 100 && numScore > 9) {
+    return " " + String(score);
+
+  } else if (numScore < 10) {
+    return " " + String(score) + " ";
+
+  } else {
+    return String(score);
+  }
 }
+
+String padScoreHome(const char* score) {
+  int numScore = atoi(score);
+
+  if (numScore < 100 && numScore > 9) {
+      return String(score) + " ";
+
+  } else if (numScore < 10) {
+    return " " + String(score) +  " ";
+
+  } else {
+    return String(score);
+  }
+  }
+  
 
 
 void fetchGames(const char* url, const char* sport) {
@@ -229,21 +236,30 @@ void fetchGames(const char* url, const char* sport) {
     struct tm eventTmCopy = *eventTm;
     struct tm* nowTm = localtime(&nowTime);
 
-    if (eventTmCopy.tm_mday != nowTm ->tm_mday ||
-      eventTmCopy.tm_mon != nowTm->tm_mon) {
-        continue;
-      }
+    // if (eventTmCopy.tm_mday != nowTm ->tm_mday ||
+    //   eventTmCopy.tm_mon != nowTm->tm_mon) {
+    //     continue;
+    //   }
 
 
     JsonObject competition = event["competitions"][0];
 
     strlcpy(games[gameCount].homeTeam, padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???").c_str(), 5);
-    strlcpy(games[gameCount].homeScore, (competition["competitors"][0]["score"] | "0"), 4);
+
+    strlcpy(games[gameCount].homeScore, padScoreHome((competition["competitors"][0]["score"] | "0")).c_str(), 4);
+    // snprintf(games[gameCount].homeScore, sizeof(games[gameCount].homeScore), "%3d", atoi(competition["competitors"][0]["score"] | "0"), 4);
+
+
     strlcpy(games[gameCount].awayTeam,  padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???").c_str(), 5);
-    strlcpy(games[gameCount].awayScore, (competition["competitors"][1]["score"] | "0"), 4);
+
+
+    strlcpy(games[gameCount].awayScore, padScoreAway((competition["competitors"][1]["score"] | "0")).c_str(), 4);
+    // snprintf(games[gameCount].awayScore, sizeof(games[gameCount].homeScore), "%3d", atoi(competition["competitors"][1]["score"] | "0"), 4);
+
+
     strlcpy(games[gameCount].state, (competition["status"]["type"]["state"] | "pre"), 4);
     games[gameCount].period = competition["status"]["period"] | 0;
-    strlcpy(games[gameCount].displayTime, formatTime(eventTime).c_str(), 9);
+    formatTime(eventTime, games[gameCount].displayTime, 9);
     strlcpy(games[gameCount].sport, sport, 7);
 
     gameCount++;
@@ -330,20 +346,24 @@ void displayGame(int index) {
     // display.setTextColor(display.color565(255, 165, 0));
     // display.print("INN " + String(g.period));
 
-    matrix->setTextColor(matrix->color565(0, 255, 0));
+    matrix->setTextColor(matrix->color565(255, 255, 255));
     matrix->setCursor(0, 8);
     matrix->print(g.awayTeam);
-    matrix->setCursor(40, 8);
+    matrix->setTextColor(matrix->color565(0, 255, 0));
+    matrix->setCursor(38, 8);
     matrix->print(g.awayScore);
-    matrix->setCursor(66,8);
+    matrix->setTextColor(matrix->color565(255, 255, 255));
+    matrix->setCursor(68,8);
     matrix->print("-");
 
-    matrix->setCursor(76, 8);
+    matrix->setTextColor(matrix->color565(0, 255, 0));
+    matrix->setCursor(78, 8);
     matrix->print(g.homeScore);
-    matrix->setCursor(114, 8);
+    matrix->setTextColor(matrix->color565(255, 255, 255));
+    matrix->setCursor(122, 8);
     matrix->print(g.homeTeam);
 
-    matrix->setTextColor(matrix->color565(255, 165, 0));
+    matrix->setTextColor(matrix->color565(0, 255, 0));
     matrix->setCursor(158, 8);
     
     if (strcmp(g.sport, "MLB") == 0) {
@@ -360,6 +380,8 @@ void displayGame(int index) {
     
     matrix->print(g.period);
 
+    
+
 
   } else {
     // display.setTextColor(display.color565(200, 200, 200));
@@ -374,20 +396,32 @@ void displayGame(int index) {
     matrix->setTextColor(matrix->color565(200, 200, 200));
     matrix->setCursor(0, 8);
     matrix->print(g.awayTeam);
+
     matrix->setCursor(40, 8);
+    matrix->setTextColor(matrix->color565(255, 165, 0));
     matrix->print(g.awayScore);
-    matrix->setCursor(52, 8);
+
+    matrix->setCursor(79, 8);
+    matrix->setTextColor(matrix->color565(200, 200, 200));
     matrix->print("-");
 
-    matrix->setCursor(64, 8);
+    matrix->setCursor(92, 8);
+    matrix->setTextColor(matrix->color565(255, 165, 0));
     matrix->print(g.homeScore);
-    matrix->setCursor(100, 8);
+
+    matrix->setCursor(132, 8);
+    matrix->setTextColor(matrix->color565(255, 255, 255));
     matrix->print(g.homeTeam);
 
-    matrix->setTextColor(matrix->color565(100, 100, 100));
-    matrix->setCursor(158, 8);
-    matrix->print("FNL");
+    matrix->setTextColor(matrix->color565(255, 165, 0));
+    matrix->setCursor(174, 8);
+    matrix->print("F");
   }
+  matrix->setTextSize(1);
+  matrix->setCursor(170, 24);
+  matrix->setTextColor(matrix->color565(255, 255, 255));
+  matrix->print(g.sport);
+  matrix->setTextSize(2);
 
 }
 
@@ -506,7 +540,7 @@ void setup() {
 
 void loop() {
 
-  if (ESP.getFreeHeap() < 50000) {
+  if (ESP.getFreeHeap() < 100000) {
     Serial.println("Low memory, restarting...");
     ESP.restart();
   }

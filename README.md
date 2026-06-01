@@ -93,37 +93,35 @@ Currently, the ticker supports MLB, NFL, NBA, and NHL games, with future support
 
 ## Engineering Challenges
 
-### Memory Management
+### 1. Memory Management
 
-One of the largest challenges during development was memory management on the ESP32.
+Challenge: The ESPN API responses contain significantly more information than is required for display. Early versions of the software experienced memory constraints due to the size of the JSON responses being deserialized.
 
-The ESPN API responses contain significantly more information than is required for display. Early versions of the software experienced memory constraints due to the size of the JSON responses being deserialized.
-
-To solve this issue, ArduinoJson document filters were implemented so that only the fields required for display are loaded into memory. This significantly reduced RAM consumption and improved system stability.
+Solution: ArduinoJson document filters were implemented so that only the fields required for display are loaded into memory. This significantly reduced RAM consumption and improved system stability.
 
 This project provided valuable experience working with resource-constrained embedded hardware and optimizing software to fit within available memory limits.
 
-### Long-Term Reliability
+### 2. Long-Term Reliability
 
-The application continuously monitors available heap memory during operation.
+Challenge: During normal execution, free heap memory gradually decreases from approximately 190 KB to roughly 100 KB. 
 
-During normal execution, free heap memory gradually decreases from approximately 190 KB to roughly 100 KB. To prevent instability or crashes, the system automatically restarts when memory falls below a predefined threshold.
+Solution: The application continuously monitors available heap memory during operation. To prevent instability or crashes, the system automatically restarts when memory falls below a predefined threshold.
 
 This approach allows the ticker to maintain reliable long-term operation while additional memory optimizations continue to be developed.
 
-### Display Communication
+### 3. Display Communication
 
-Several display communication approaches were evaluated during development before selecting SPI communication for the HUB75 display system.
+Challenge: Finding a communication proctocol that would work for my purposes.
+
+Solution: Several display communication approaches were evaluated during development before selecting SPI communication for the HUB75 display system.
 
 Implementing and troubleshooting communication between the ESP32 and multiple LED matrix panels provided experience with hardware interfaces and real-time display control.
 
-### Data Filtering and Processing
+### 4. Data Filtering and Processing
 
-Another challenge involved ensuring that only relevant games were displayed.
+Challenge: The ESPN endpoints often contain games from multiple dates, requiring the software to determine the current date and filter out games that should not appear on the ticker.
 
-The ESPN endpoints often contain games from multiple dates, requiring the software to determine the current date and filter out games that should not appear on the ticker.
-
-Additional logic was implemented to organize games by sport and support user-selectable display modes.
+Solution: Date-based filtering was implemented to remove games not occuring on the current game as well as organize games by sport and support user-selectable display modes.
 
 ---
 

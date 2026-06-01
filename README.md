@@ -95,7 +95,7 @@ Currently, the ticker supports MLB, NFL, NBA, and NHL games, with future support
 
 ### 1. Memory Management
 
-Challenge: The ESPN API responses contain significantly more information than is required for display. Early versions of the software experienced memory constraints due to the size of the JSON responses being deserialized.
+**Challenge:** The ESPN API responses contain significantly more information than is required for display. Early versions of the software experienced memory constraints due to the size of the JSON responses being deserialized.
 
 Solution: ArduinoJson document filters were implemented so that only the fields required for display are loaded into memory. This significantly reduced RAM consumption and improved system stability.
 

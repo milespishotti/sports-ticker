@@ -170,4 +170,6 @@ Through this project I gained experience with:
 
 ## Demo Video
 
-(Add demo video link here)
+This demostration uses historical game data to showcase league filtering functionality.
+
+[Watch the Demo Video](https://youtu.be/I8Wljkw7urU)

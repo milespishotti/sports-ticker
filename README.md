@@ -6,7 +6,7 @@ The ESP32 Sports Score Ticker is an embedded systems project that retrieves live
 
 The project was developed to gain hands-on experience with embedded systems, networking, API integration, memory management, and real-time data processing. The system is designed to operate continuously while automatically updating game information throughout the day.
 
-Currently, the ticker supports MLB, NFL, NBA, and NHL games, with future support planned for NCAA Football and NCAA Basketball.
+Currently, the ticker supports MLB, NFL, NBA, NHL, NCAAB, and NCAAF games.
 
 ---
 

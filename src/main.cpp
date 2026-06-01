@@ -47,7 +47,7 @@ const char* password = "Pishotti";
 const char* sportsUrls[] = {
   "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard",
-  "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20250201",
+  "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
   "http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard"
@@ -124,6 +124,33 @@ void formatTime(time_t rawTime, char* buf, size_t bufSize) {
 }
 
 
+// String padTeamAway(const char* team) {
+//   int len = strlen(team);
+
+//   if (len == 2) {
+//     return " " + String(team) + " ";
+    
+//   } else if (len == 3) {
+//     return String(team) + " ";
+
+//   } else {
+//     return String(team);
+//   }
+// }
+
+// String padTeamHome(const char* team) {
+//   int len = strlen(team);
+
+//   if (len == 2) {
+//     return " " + String(team) + " ";
+
+//   } else if (len == 3) {
+//     return " " + String(team);
+
+//   } else {
+//     return String(team);
+//   }
+// }
 
 
 String padTeam(String team) {
@@ -236,10 +263,10 @@ void fetchGames(const char* url, const char* sport) {
     struct tm eventTmCopy = *eventTm;
     struct tm* nowTm = localtime(&nowTime);
 
-    // if (eventTmCopy.tm_mday != nowTm ->tm_mday ||
-    //   eventTmCopy.tm_mon != nowTm->tm_mon) {
-    //     continue;
-    //   }
+    if (eventTmCopy.tm_mday != nowTm ->tm_mday ||
+      eventTmCopy.tm_mon != nowTm->tm_mon) {
+        continue;
+      }
 
 
     JsonObject competition = event["competitions"][0];
@@ -324,15 +351,16 @@ void displayGame(int index) {
     matrix->setTextColor(matrix->color565(255, 255, 255));
     matrix->setCursor(0,8);
     matrix->print(g.awayTeam);
-    matrix->setCursor(44, 8);
+    
+    matrix->setCursor(54, 8);
     matrix->print("@");
     
-    matrix->setCursor(64,8);
+    matrix->setCursor(76,8);
     matrix->print(g.homeTeam);
-    matrix->print(" |");
   
+
     matrix->setTextColor(matrix->color565(150, 150, 150));
-    matrix->setCursor(128, 8);
+    matrix->setCursor(140, 8);
     matrix->print(g.displayTime);
   
 
@@ -349,36 +377,68 @@ void displayGame(int index) {
     matrix->setTextColor(matrix->color565(255, 255, 255));
     matrix->setCursor(0, 8);
     matrix->print(g.awayTeam);
-    matrix->setTextColor(matrix->color565(0, 255, 0));
-    matrix->setCursor(38, 8);
-    matrix->print(g.awayScore);
-    matrix->setTextColor(matrix->color565(255, 255, 255));
-    matrix->setCursor(68,8);
-    matrix->print("-");
 
-    matrix->setTextColor(matrix->color565(0, 255, 0));
-    matrix->setCursor(78, 8);
-    matrix->print(g.homeScore);
-    matrix->setTextColor(matrix->color565(255, 255, 255));
-    matrix->setCursor(122, 8);
-    matrix->print(g.homeTeam);
+    if (strcmp(g.sport, "NCAAB") == 0 || strcmp(g.sport, "NCAAF") == 0) {
+      matrix->setCursor(50, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.awayScore);
 
-    matrix->setTextColor(matrix->color565(0, 255, 0));
-    matrix->setCursor(158, 8);
+      matrix->setCursor(88, 8);
+      matrix->setTextColor(matrix->color565(200, 200, 200));
+      matrix->print("-");
+
+      matrix->setCursor(102, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.homeScore);
+
+      matrix->setCursor(142, 8);
+      matrix->setTextColor(matrix->color565(255, 255, 255));
+      matrix->print(g.homeTeam);
+    } else {
+    
+      matrix->setTextColor(matrix->color565(0, 255, 0));
+      matrix->setCursor(38, 8);
+      matrix->print(g.awayScore);
+      matrix->setTextColor(matrix->color565(255, 255, 255));
+      matrix->setCursor(68,8);
+      matrix->print("-");
+
+      matrix->setTextColor(matrix->color565(0, 255, 0));
+      matrix->setCursor(78, 8);
+      matrix->print(g.homeScore);
+      matrix->setTextColor(matrix->color565(255, 255, 255));
+      matrix->setCursor(122, 8);
+      matrix->print(g.homeTeam);
+
+      matrix->setTextColor(matrix->color565(0, 255, 0));
+      matrix->setCursor(158, 8);
+    }
     
     if (strcmp(g.sport, "MLB") == 0) {
       matrix->print("I:");
     } else if (strcmp(g.sport, "NHL") == 0) {
       matrix->print("P:");
     } else if (strcmp(g.sport, "NCAAB") == 0) {
+      matrix->setTextSize(1);
+      matrix->setCursor(80,8);
       matrix->print("H:");
+      matrix->setTextSize(2);
     } else if (strcmp(g.sport, "NCAAF") == 0) {
-      matrix->print("H:");
+      matrix->setTextSize(1);
+      matrix->setCursor(80, 8);
+      matrix->print("Q:");
+      matrix->setTextSize(2);
     } else {
       matrix->print("Q:");
     }
     
+    if (strcmp(g.sport, "NCAAB") == 0 || strcmp(g.sport, "NCAAF") == 0) {
+      matrix->setTextSize(1);
+      matrix->print(g.period);
+      matrix->setTextSize(1);
+    } else {
     matrix->print(g.period);
+    }
 
     
 
@@ -397,28 +457,60 @@ void displayGame(int index) {
     matrix->setCursor(0, 8);
     matrix->print(g.awayTeam);
 
-    matrix->setCursor(40, 8);
-    matrix->setTextColor(matrix->color565(255, 165, 0));
-    matrix->print(g.awayScore);
+    if (strcmp(g.sport, "NCAAB") == 0 || strcmp(g.sport, "NCAAF") == 0) {
 
-    matrix->setCursor(79, 8);
-    matrix->setTextColor(matrix->color565(200, 200, 200));
-    matrix->print("-");
+      matrix->setCursor(50, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.awayScore);
 
-    matrix->setCursor(92, 8);
-    matrix->setTextColor(matrix->color565(255, 165, 0));
-    matrix->print(g.homeScore);
+      matrix->setCursor(88, 8);
+      matrix->setTextColor(matrix->color565(200, 200, 200));
+      matrix->print("-");
 
-    matrix->setCursor(132, 8);
-    matrix->setTextColor(matrix->color565(255, 255, 255));
-    matrix->print(g.homeTeam);
+      matrix->setCursor(102, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.homeScore);
 
-    matrix->setTextColor(matrix->color565(255, 165, 0));
-    matrix->setCursor(174, 8);
-    matrix->print("F");
+      matrix->setCursor(142, 8);
+      matrix->setTextColor(matrix->color565(255, 255, 255));
+      matrix->print(g.homeTeam);
+
+      matrix->setTextSize(1);
+      matrix->setCursor(91, 24);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print("F");
+      matrix->setTextSize(2);
+    } else {
+
+      matrix->setCursor(40, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.awayScore);
+
+      matrix->setCursor(79, 8);
+      matrix->setTextColor(matrix->color565(200, 200, 200));
+      matrix->print("-");
+
+      matrix->setCursor(92, 8);
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->print(g.homeScore);
+
+      matrix->setCursor(132, 8);
+      matrix->setTextColor(matrix->color565(255, 255, 255));
+      matrix->print(g.homeTeam);
+
+      matrix->setTextColor(matrix->color565(255, 165, 0));
+      matrix->setCursor(174, 8);
+      matrix->print("F");
+    }
   }
+
+
   matrix->setTextSize(1);
+  if (strcmp(g.sport, "NCAAF") == 0 || strcmp(g.sport, "NCAAB") == 0) {
+    matrix->setCursor(156, 24);
+  } else {
   matrix->setCursor(170, 24);
+  }
   matrix->setTextColor(matrix->color565(255, 255, 255));
   matrix->print(g.sport);
   matrix->setTextSize(2);

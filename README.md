@@ -10,6 +10,10 @@ Currently, the ticker supports MLB, NFL, NBA, and NHL games, with future support
 
 ---
 
+![ESP32 Sports Ticker](images/sports_ticker_img4.jpeg)
+
+
+
 ## Features
 
 * Retrieves live sports scores from ESPN API endpoints

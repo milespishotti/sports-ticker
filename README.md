@@ -161,7 +161,9 @@ Through this project I gained experience with:
 
 ## Photos
 
-(Add project photos here)
+![Sports Ticker in Pregame Mode](images/sports_ticker_img3.jpeg)
+
+![Sports Ticker in Postgame Mode](images/sports_ticker_img1.jpeg)
 
 ---
 

@@ -161,10 +161,11 @@ Through this project I gained experience with:
 
 ## Photos
 
-![Pregame Mode](images/sports_ticker_img3.jpeg)
+![Pregame Mode](images/sport_ticker_img3.jpeg)
 
 ![Postgame Mode](images/sports_ticker_img1.jpeg)
 
+![Wiring](images/sports_ticker_wiring.jpeg)
 ---
 
 ## Demo Video

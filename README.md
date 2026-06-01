@@ -144,8 +144,6 @@ Through this project I gained experience with:
 
 ## Future Improvements
 
-* Add NCAA Football support
-* Add NCAA Basketball support
 * Further reduce memory consumption
 * Improve handling of game-status edge cases
 * Build a permanent enclosure

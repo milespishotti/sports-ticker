@@ -56,7 +56,7 @@ struct Game {
   char homeTeam[5];
   char awayScore[4];
   char homeScore[4];
-  char state[4];
+  char state[5];
   char sport[7];
   int period;
   char displayTime[9];
@@ -101,42 +101,72 @@ void formatTime(time_t rawTime, char* buf, size_t bufSize) {
 }
 
 
-String padTeam(String team) {
-if (team == "SF" || team == "SD" || team == "TB" || team == "KC") {
-  return team + " ";
-} else if (team == "UTAH") {
-  return "UTA";
-} else {
-return team;
-} }
+// String padTeam(String team) {
+// if (team == "SF" || team == "SD" || team == "TB" || team == "KC") {
+//   return team + " ";
+// } else if (team == "UTAH") {
+//   return "UTA";
+// } else {
+// return team;
+// } }
 
-String padScoreAway(const char* score) {
-  int numScore = atoi(score);
-
-  if (numScore < 100 && numScore > 9) {
-    return " " + String(score);
-
-  } else if (numScore < 10) {
-    return " " + String(score) + " ";
-
+void padTeam(const char* team, char* buf, size_t bufSize) {
+  if (strcmp(team, "UTAH") == 0) {
+    strlcpy(buf, "UTA", bufSize);
   } else {
-    return String(score);
+    strlcpy(buf, team, bufSize);
   }
 }
 
-String padScoreHome(const char* score) {
+// String padScoreAway(const char* score) {
+//   int numScore = atoi(score);
+
+//   if (numScore < 100 && numScore > 9) {
+//     return " " + String(score);
+
+//   } else if (numScore < 10) {
+//     return " " + String(score) + " ";
+
+//   } else {
+//     return String(score);
+//   }
+// }
+
+void padScoreAway(const char* score, char* buf, size_t bufSize) {
   int numScore = atoi(score);
-
-  if (numScore < 100 && numScore > 9) {
-      return String(score) + " ";
-
-  } else if (numScore < 10) {
-    return " " + String(score) +  " ";
-
+  if(numScore < 10) {
+    snprintf(buf, bufSize, "  %s", score);
+  } else if (numScore < 100) {
+    snprintf(buf, bufSize, " %s", score);
   } else {
-    return String(score);
+    strlcpy(buf, score, bufSize);
   }
+}
+
+// String padScoreHome(const char* score) {
+//   int numScore = atoi(score);
+
+//   if (numScore < 100 && numScore > 9) {
+//       return String(score) + " ";
+
+//   } else if (numScore < 10) {
+//     return " " + String(score) +  " ";
+
+//   } else {
+//     return String(score);
+//   }
+//   }
+
+void padScoreHome(const char* score, char* buf, size_t bufSize) {
+  int numScore = atoi(score);
+  if (numScore < 10) {
+    snprintf(buf, bufSize, "%s  ", score);
+  } else if (numScore < 100) {
+    snprintf(buf, bufSize, "%s ", score);
+  } else {
+    strlcpy(buf, score, bufSize);
   }
+}
   
 
 
@@ -219,15 +249,38 @@ void fetchGames(const char* url, const char* sport) {
 
     JsonObject competition = event["competitions"][0];
 
-    strlcpy(games[gameCount].homeTeam, padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???").c_str(), 5);
+    // strlcpy(games[gameCount].homeTeam, padTeam(competition["competitors"][0]["team"]["abbreviation"] | "???").c_str(), 5);
 
-    strlcpy(games[gameCount].homeScore, padScoreHome((competition["competitors"][0]["score"] | "0")).c_str(), 4);
+    // strlcpy(games[gameCount].homeScore, padScoreHome((competition["competitors"][0]["score"] | "0")).c_str(), 4);
 
-    strlcpy(games[gameCount].awayTeam,  padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???").c_str(), 5);
+    // strlcpy(games[gameCount].awayTeam,  padTeam(competition["competitors"][1]["team"]["abbreviation"] | "???").c_str(), 5);
 
-    strlcpy(games[gameCount].awayScore, padScoreAway((competition["competitors"][1]["score"] | "0")).c_str(), 4);
+    // strlcpy(games[gameCount].awayScore, padScoreAway((competition["competitors"][1]["score"] | "0")).c_str(), 4);
     
-    strlcpy(games[gameCount].state, (competition["status"]["type"]["state"] | "pre"), 4);
+    // strlcpy(games[gameCount].state, (competition["status"]["type"]["state"] | "pre"), 4);
+    
+
+    const char* homeAbbr = competition["competitors"][0]["team"]["abbreviation"] | "???";
+    const char* awayAbbr = competition["competitors"][1]["team"]["abbreviation"] | "???";
+    const char* homeScoreRaw = competition["competitors"][0]["score"] | "0";
+    const char* awayScoreRaw = competition["competitors"][1]["score"] | "0";
+
+    char homeBuf[5];
+    char awayBuf[5];
+    char homeScoreBuf[5];
+    char awayScoreBuf[5];
+
+    padTeam(homeAbbr, homeBuf, 5);
+    padTeam(awayAbbr, awayBuf, 5);
+    padScoreHome(homeScoreRaw, homeScoreBuf, 5);
+    padScoreAway(awayScoreRaw, awayScoreBuf, 5);
+
+    strlcpy(games[gameCount].homeTeam, homeBuf, 5);
+    strlcpy(games[gameCount].homeScore, homeScoreBuf, 5);
+    strlcpy(games[gameCount].awayTeam, awayBuf, 5);
+    strlcpy(games[gameCount].awayScore, awayScoreBuf, 5);
+    strlcpy(games[gameCount].state, (competition["status"]["type"]["state"] | "pre"), 5);
+
     games[gameCount].period = competition["status"]["period"] | 0;
     formatTime(eventTime, games[gameCount].displayTime, 9);
     strlcpy(games[gameCount].sport, sport, 7);
@@ -299,11 +352,11 @@ void displayGame(int index) {
       matrix->setCursor(38, 8);
       matrix->print(g.awayScore);
       matrix->setTextColor(matrix->color565(255, 255, 255));
-      matrix->setCursor(68,8);
+      matrix->setCursor(75,8);
       matrix->print("-");
 
       matrix->setTextColor(matrix->color565(0, 255, 0));
-      matrix->setCursor(78, 8);
+      matrix->setCursor(88, 8);
       matrix->print(g.homeScore);
       matrix->setTextColor(matrix->color565(255, 255, 255));
       matrix->setCursor(122, 8);
